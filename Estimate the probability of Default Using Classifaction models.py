@@ -1,35 +1,56 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder
+from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
 
+
 data_url = 'https://code.datasciencedojo.com/datasciencedojo/datasets/raw/master/Default%20of%20Credit%20Card%20Clients/default%20of%20credit%20card%20clients.csv'
 df = pd.read_csv(data_url)
 
-print(df.columns)
 
-target_column_name = 'Y'
+df.rename(columns={'default payment next month': 'Y'}, inplace=True)
 
-X = df.drop(target_column_name, axis=1) 
-y = df[target_column_name]  
+X = df.drop('Y', axis=1) 
+
+
+label_encoder = LabelEncoder()
+y = label_encoder.fit_transform(df['Y'])
+
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-scaler = StandardScaler()
-X_train = scaler.fit_transform(X_train)
-X_test = scaler.transform(X_test)
+
+numeric_features = X_train.select_dtypes(include=['int64', 'float64']).columns
+categorical_features = X_train.select_dtypes(include=['object']).columns
+
+numeric_transformer = StandardScaler()
+categorical_transformer = OneHotEncoder(drop='first', handle_unknown='ignore')
+
+
+preprocessor = ColumnTransformer(
+    transformers=[
+        ('num', numeric_transformer, numeric_features),
+        ('cat', categorical_transformer, categorical_features)
+    ])
+
+X_train = preprocessor.fit_transform(X_train)
+X_test = preprocessor.transform(X_test)
+
 
 logistic_model = LogisticRegression()
 random_forest_model = RandomForestClassifier()
 gradient_boosting_model = GradientBoostingClassifier()
 svm_model = SVC(probability=True)
 
+
 logistic_model.fit(X_train, y_train)
 random_forest_model.fit(X_train, y_train)
 gradient_boosting_model.fit(X_train, y_train)
 svm_model.fit(X_train, y_train)
+
 
 def evaluate_model(model, X_test, y_test):
     y_pred = model.predict(X_test)
@@ -74,6 +95,7 @@ print("Precision:", prec)
 print("Recall:", rec)
 print("F1 Score:", f1)
 print("ROC-AUC:", roc_auc)
+
 
 
 
